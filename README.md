@@ -1,34 +1,120 @@
-# ASCIIt
+<div align="center">
 
-**English** · [Bahasa Indonesia](README.id.md)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/logo-light.svg">
+  <img src="docs/logo-dark.svg" width="760" alt="ASCIIt">
+</picture>
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-7bf1a8)](LICENSE)
-![WebGL2](https://img.shields.io/badge/WebGL2-GPU%20rendering-5c6bc0)
-![Dependencies](https://img.shields.io/badge/dependencies-0-7bf1a8)
-![Build step](https://img.shields.io/badge/build%20step-none-8b8b96)
-![UI languages](https://img.shields.io/badge/UI-EN%20%7C%20ID-8b8b96)
+### Turn any image or video into live ASCII art, right on your GPU.
 
-A real-time ASCII art editor that runs **100% in your browser, on your GPU**.
-No server, no account, no credits, no tracking.
+<sub>No server · no account · no credits · no tracking · nothing leaves your machine</sub>
 
-<p align="center">
-  <img src="docs/demo.gif" width="720" alt="ASCIIt cycling through the Characters, Braille, Dither and 3D Hex modes on the sample clip">
-</p>
+<br><br>
 
-## Four render modes
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7bf1a8?style=flat-square&labelColor=0d1117" alt="License: MIT"></a>
+<img src="https://img.shields.io/badge/WebGL2-GPU%20rendering-5ce1e6?style=flat-square&labelColor=0d1117&logo=webgl&logoColor=white" alt="WebGL2">
+<img src="https://img.shields.io/badge/dependencies-0-a78bfa?style=flat-square&labelColor=0d1117" alt="Zero dependencies">
+<img src="https://img.shields.io/badge/build%20step-none-7bf1a8?style=flat-square&labelColor=0d1117" alt="No build step">
+<img src="https://img.shields.io/badge/UI-EN%20%7C%20ID-5ce1e6?style=flat-square&labelColor=0d1117" alt="UI in English and Indonesian">
 
-| Characters | Braille |
-|---|---|
-| ![Characters mode](docs/mode-characters.png) | ![Braille mode](docs/mode-braille.png) |
-| Glyph ramp in the source's own colors, 6 presets + custom charset, edge boost | 2×4 dots per cell read from 8 texels (not a fake ramp), real Unicode braille |
-| **Dither** | **3D Hex** |
-| ![Dither mode](docs/mode-dither.png) | ![3D Hex mode](docs/mode-hex.png) |
-| bayer8 / halftone / lines with 6 palettes (mono, grey4, gameboy, pico8, cga, cyberpunk) | Three-faced hexagonal prisms (1.35 / 1.0 / 0.55 shading), instanced geometry |
+**English** &nbsp;·&nbsp; [Bahasa Indonesia](README.id.md)
 
-## The output is real text
+[Modes](#four-ways-to-draw-a-pixel) &nbsp;·&nbsp;
+[Text export](#its-actual-text-not-a-picture-of-text) &nbsp;·&nbsp;
+[Player](#scrub-step-record) &nbsp;·&nbsp;
+[Quick start](#run-it-locally) &nbsp;·&nbsp;
+[Shortcuts](#keyboard-first) &nbsp;·&nbsp;
+[How it works](#how-it-works) &nbsp;·&nbsp;
+[Roadmap](#whats-next)
 
-The TXT export picks every character with the same formula as the shader, so what you see is
-what you get. This is the sample image exported in Braille mode at 90 columns:
+<br>
+
+<img src="docs/hero.webp" width="748" alt="The sample clip wiping from the source video into ASCII, then cycling through the Characters, Braille, Dither and 3D Hex modes">
+
+<br><br>
+
+<table>
+<tr>
+<td width="33%" valign="top">
+<img src="docs/icon-modes.svg" width="44" alt=""><br>
+<b>Four render modes</b><br>
+<sub>Characters, Braille, Dither and 3D Hex. Switch with <kbd>1</kbd>–<kbd>4</kbd>.</sub>
+</td>
+<td width="33%" valign="top">
+<img src="docs/icon-text.svg" width="44" alt=""><br>
+<b>Real text out</b><br>
+<sub>TXT export and copy use the same formula as the shader. What you see is what you paste.</sub>
+</td>
+<td width="33%" valign="top">
+<img src="docs/icon-player.svg" width="44" alt=""><br>
+<b>Frame-by-frame player</b><br>
+<sub>Play, scrub, step ±1 frame, change speed, toggle sound.</sub>
+</td>
+</tr>
+<tr>
+<td width="33%" valign="top">
+<img src="docs/icon-record.svg" width="44" alt=""><br>
+<b>Video export</b><br>
+<sub>MP4 or WebM with audio, one full loop or a custom length.</sub>
+</td>
+<td width="33%" valign="top">
+<img src="docs/icon-gpu.svg" width="44" alt=""><br>
+<b>One draw call</b><br>
+<sub>The whole grid is a single instanced draw. No per-frame CPU readback.</sub>
+</td>
+<td width="33%" valign="top">
+<img src="docs/icon-zero.svg" width="44" alt=""><br>
+<b>Zero dependencies</b><br>
+<sub>No framework, no npm, no build. Python's static server is all it needs.</sub>
+</td>
+</tr>
+</table>
+
+</div>
+
+<br>
+
+<p align="center"><img src="docs/divider.svg" width="860" alt=""></p>
+
+<sub><b>01</b> &nbsp;·&nbsp; RENDER MODES</sub>
+
+## Four ways to draw a pixel
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/mode-characters.png" alt="Characters mode"><br>
+<kbd>1</kbd> &nbsp;<b>Characters</b><br>
+<sub>Glyph ramp in the source's own colors. 6 presets plus a custom charset, with edge boost.</sub>
+</td>
+<td width="50%" valign="top">
+<img src="docs/mode-braille.png" alt="Braille mode"><br>
+<kbd>2</kbd> &nbsp;<b>Braille</b><br>
+<sub>2×4 dots per cell, read from 8 texels instead of a fake ramp. Real Unicode braille.</sub>
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/mode-dither.png" alt="Dither mode"><br>
+<kbd>3</kbd> &nbsp;<b>Dither</b><br>
+<sub>bayer8, halftone or lines, with 6 palettes: mono, grey4, gameboy, pico8, cga, cyberpunk.</sub>
+</td>
+<td width="50%" valign="top">
+<img src="docs/mode-hex.png" alt="3D Hex mode"><br>
+<kbd>4</kbd> &nbsp;<b>3D Hex</b><br>
+<sub>Three-faced hexagonal prisms (1.35 / 1.0 / 0.55 shading), drawn as instanced geometry.</sub>
+</td>
+</tr>
+</table>
+
+<sub><b>02</b> &nbsp;·&nbsp; REAL TEXT</sub>
+
+## It's actual text, not a picture of text
+
+The TXT export picks every character with the same formula as the shader, so the file matches
+the screen. Here's the sample image exported in Braille mode at 90 columns. Select it, copy it,
+paste it anywhere.
 
 ```
 ⠀⠀⠀⠀⠀⠀⢀⣤⣶⣾⣿⣿⣷⣶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣀⣤⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀
@@ -49,75 +135,89 @@ what you get. This is the sample image exported in Braille mode at 90 columns:
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠛⠻⠿⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ```
 
-## Run it
+<sub><b>03</b> &nbsp;·&nbsp; PLAYER & EXPORT</sub>
 
-All you need is Python 3 (for a static file server) and a modern browser with WebGL2.
+## Scrub, step, record
+
+<p align="center">
+  <img src="docs/ui.webp" width="860" alt="The ASCIIt editor: settings sidebar on the left, the sample clip rendered in Characters mode, and the player bar with timeline, frame step, speed and sound">
+</p>
+
+Load a source with **Open image/video**, or drag & drop a file anywhere on the window. The sidebar has grid columns, cell size, contrast, brightness, invert, edge boost,
+dither settings and 4 post FX (chromatic, scanline, vignette, grain).
+
+| Export | What you get |
+|---|---|
+| **PNG** | The frame on screen at `cols × cell` resolution (110 × 8 → 880 px). Pause a video and pick the exact frame first. |
+| **TXT / Copy** | The current frame as plain text (Characters & Braille). Braille needs a font with U+2800–U+28FF. |
+| **Video** | Recorded live from the canvas with `MediaRecorder`: one full loop at 1×, or N seconds from 0:00. Audio included if the video has sound. Progress bar and Cancel; position, speed and play state are restored afterwards. |
+
+<sub><b>04</b> &nbsp;·&nbsp; QUICK START</sub>
+
+## Run it locally
+
+You need Python 3 (for a static file server) and a browser with WebGL2.
 
 ```bash
 git clone https://github.com/nabotz/asciit.git
 cd asciit
-./run.sh            # default port 8123
-# or: python3 -m http.server 8123 --bind 127.0.0.1
+./run.sh            # serves on port 8123
 ```
 
-Open **http://localhost:8123**. Sample video: **http://localhost:8123/?video=assets/demo.mp4**.
+Then open **http://localhost:8123**, or **http://localhost:8123/?video=assets/demo.mp4** for the sample clip.
 
-**Windows:** double-click `run.bat` (or run `run.bat 8124` from a terminal for another port).
-The script finds Python 3 (`py` / `python` / `python3`), opens the browser for you, and
-forces `.js` files to be served as `text/javascript` — some Windows registries map `.js`
-to `text/plain`, and browsers refuse to load ES modules with that type.
+> [!TIP]
+> **On Windows**, double-click `run.bat` (or run `run.bat 8124` for another port). It finds
+> Python 3 (`py` / `python` / `python3`), opens your browser, and forces `.js` to be served as
+> `text/javascript`. Some Windows registries map `.js` to `text/plain`, which browsers refuse
+> to load as an ES module.
 
-> Why a server? Browsers block ES modules and textures loaded from `file://`.
-> `./run.sh` is just Python's built-in `http.server` — no dependencies.
+> [!NOTE]
+> **Why a server at all?** Browsers block ES modules and textures loaded from `file://`.
+> `run.sh` is just Python's built-in `http.server`, so there's still nothing to install.
 
-## Controls
+<sub><b>05</b> &nbsp;·&nbsp; SHORTCUTS</sub>
 
-Load a source with the **Open image/video** button, or by dragging & dropping a file anywhere
-on the window. The sidebar has grid columns, cell size,
-contrast/brightness/invert, edge boost, dither settings and 4 post FX (chromatic, scanline,
-vignette, grain). Videos get a player bar with play/pause, a timeline, ±1 frame, speed and sound.
+## Keyboard first
 
-| Key | Action |
+| Keys | Action |
 |---|---|
-| `1`–`4` | Switch mode (Characters · Braille · Dither · 3D Hex) |
-| `Space` | Play / pause |
-| `←` / `→` | Previous / next frame |
-| `Shift` + `←` / `→` | Back / forward 1 second |
-| `E` | Save PNG |
-| `T` | Save TXT |
+| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> | Characters · Braille · Dither · 3D Hex |
+| <kbd>Space</kbd> | Play / pause |
+| <kbd>←</kbd> <kbd>→</kbd> | Previous / next frame |
+| <kbd>Shift</kbd> + <kbd>←</kbd> <kbd>→</kbd> | Back / forward 1 second |
+| <kbd>E</kbd> | Save PNG |
+| <kbd>T</kbd> | Save TXT |
 
-UI language: **English / Indonesian** — `EN`/`ID` buttons in the top-left corner; your choice is
-remembered in the browser. The initial language follows your browser; add `?lang=en` or
-`?lang=id` to the URL to force one for a single visit.
+The UI speaks **English and Indonesian**. Use the `EN` / `ID` buttons in the top-left corner; your
+choice is remembered. The first visit follows your browser language, and `?lang=en` or `?lang=id`
+forces one for a single visit.
 
-## Export
+<sub><b>06</b> &nbsp;·&nbsp; BROWSER SUPPORT</sub>
 
-- **PNG** — the frame currently on screen, at `cols × cell` resolution (e.g. 110 × 8 → 880 px).
-  For video: pause, then pick the frame with the timeline or `←`/`→`.
-- **TXT / Copy** — ASCII text of the current frame (Characters & Braille modes). Open it with a
-  monospace font; braille needs a font with glyphs U+2800–U+28FF.
-- **Video** — recorded in real time from the canvas with `MediaRecorder`:
-  - *1 full loop*: from 0:00 to the end of the video, speed forced to 1×;
-  - *custom duration*: N seconds from 0:00 (the video loops if it is shorter);
-  - the video's audio is included when the box is checked and the video has sound;
-  - progress bar + Cancel button; position, speed and play state are restored afterwards.
-
-## Browser support
+## Where it runs
 
 | | Chrome / Edge | Firefox | Safari |
-|---|---|---|---|
-| Rendering (WebGL2) | ✅ | ✅ | ✅ 15+ |
-| Accurate ±1 frame (`requestVideoFrameCallback`) | ✅ 83+ | ✅ 132+ | ✅ 15.4+ |
-| Video export | MP4 (recent versions) + WebM | WebM | MP4 (+ WebM in recent versions) |
+|---|:---:|:---:|:---:|
+| Rendering (WebGL2) | ✅ | ✅ | ✅&nbsp;15+ |
+| Accurate ±1 frame (`requestVideoFrameCallback`) | ✅&nbsp;83+ | ✅&nbsp;132+ | ✅&nbsp;15.4+ |
+| Video export | MP4 (recent) + WebM | WebM | MP4 (+ WebM in recent) |
 | PNG / TXT export, copy to clipboard | ✅ | ✅ | ✅ |
 
 Developed and tested in Chromium. Video formats are detected at runtime with
 `MediaRecorder.isTypeSupported()`, so the app only offers what your browser can actually record.
 Without `requestVideoFrameCallback`, frame stepping falls back to a 30 fps estimate.
 
-## GPU
+<sub><b>07</b> &nbsp;·&nbsp; UNDER THE HOOD</sub>
 
-All the heavy lifting happens on the GPU through WebGL2 (not canvas 2D):
+## How it works
+
+<details>
+<summary><b>The GPU pipeline</b></summary>
+
+<br>
+
+All the heavy lifting happens on the GPU through WebGL2, not canvas 2D:
 
 ```
 source (image / video)
@@ -132,46 +232,68 @@ source (image / video)
 ```
 
 - **1 draw call** for the whole character grid (`drawArraysInstanced`).
-- The glyph atlas is built once per charset/font size and stored as a texture.
-- Video frames are uploaded as textures (`texImage2D`) — no per-frame `getImageData`,
-  so there is no slow CPU readback.
-- The only readback: 64×64 pixels for auto-levels (min/max luma per frame).
+- The glyph atlas is built once per charset and font size, and kept as a texture.
+- Video frames are uploaded as textures (`texImage2D`). No per-frame `getImageData`, so no slow CPU readback.
+- The only readback is 64×64 pixels for auto-levels (min/max luma per frame).
 
-The FPS counter sits in the bottom-left corner. The load is light for a real GPU: the
-default demo (110 columns) is just 110×38 = 4,180 instances per frame, and 300 columns on a
-16:9 source (~31,000 instances) is still comfortable. On a software renderer without a GPU
-(SwiftShader) it only manages a few fps. If it feels heavy, lower the columns/cell size or
-turn off post FX.
+The load is light for a real GPU: the default demo (110 columns) is 110×38 = 4,180 instances per
+frame, and 300 columns on a 16:9 source (~31,000 instances) is still comfortable. On a software
+renderer without a GPU (SwiftShader) it only manages a few fps. If it feels heavy, lower the
+columns or cell size, or turn off post FX. The FPS counter sits in the bottom-left corner.
 
-## Project structure
+</details>
+
+<details>
+<summary><b>Project structure</b></summary>
+
+<br>
 
 ```
 index.html          UI + controls (no framework)
 js/shaders.js       all GLSL: grid, glyph, dither, hex, post
 js/gl.js            WebGL2 helpers: programs, FBOs, glyph atlas, hex geometry
 js/main.js          state, render loop, sources (image/video), export
-js/i18n.js          two-language UI strings (Indonesian / English)
+js/i18n.js          two-language UI strings (English / Indonesian)
 assets/demo.jpg     sample image
 assets/demo.mp4     4-second sample clip
-docs/               README images (demo GIF, mode gallery, social preview)
+docs/               README media (logo, hero, icons, gallery, social preview)
 run.sh              static server
 run.bat             static server for Windows (double-click)
 ```
 
-## Extending
+</details>
 
-- **New charset**: add it to `RAMP_PRESETS` in `js/main.js` (or type it straight into the
-  Charset field). The atlas is rebuilt automatically.
-- **New dither palette**: add an RGB array to `PALETTES` and an `<option>` in `index.html`
-  (16 colors max, uniform `uPalette[16]`).
-- **New post FX**: copy a block in `FS_POST` (`js/shaders.js`), add a slider in `index.html`,
-  then pass its uniform in `main.js`.
-- **Other shader effects** (halftone, thermal, glitch, …): each needs its own shader; add it as
-  a new pass between scene and post.
-- **New UI language**: copy the `en` block in `js/i18n.js`, change its code (e.g. `ja`),
-  translate it, then add a `<button data-lang="ja">JA</button>` in `index.html`.
+<details>
+<summary><b>Extending it</b></summary>
 
-## Roadmap
+<br>
+
+- **New charset:** add it to `RAMP_PRESETS` in `js/main.js`, or type it straight into the Charset field. The atlas rebuilds automatically.
+- **New dither palette:** add an RGB array to `PALETTES` and an `<option>` in `index.html` (16 colors max, uniform `uPalette[16]`).
+- **New post FX:** copy a block in `FS_POST` (`js/shaders.js`), add a slider in `index.html`, then pass its uniform in `main.js`.
+- **Other shader effects** (halftone, thermal, glitch, …): each needs its own shader; add it as a new pass between scene and post.
+- **New UI language:** copy the `en` block in `js/i18n.js`, change its code (e.g. `ja`), translate it, then add `<button data-lang="ja">JA</button>` in `index.html`.
+
+</details>
+
+<details>
+<summary><b>Known limitations</b></summary>
+
+<br>
+
+- **No Floyd–Steinberg dithering** (error diffusion). This GPU version only has *ordered* algorithms (bayer/halftone/lines); error diffusion needs sequential propagation, which means the CPU or a multi-pass shader.
+- **Shader effects:** only 4 common post FX so far (chromatic, scanline, vignette, grain).
+- **Fonts** come from the system (`Courier New`, then any monospace), so glyph shapes can differ slightly between browsers.
+- **Video export is real-time**, not frame-by-frame encoding: only frames that get rendered end up in the file, so a slow GPU lowers the frame rate, and the tab must stay in front. WebM files from `MediaRecorder` have no duration in the header (some players can't seek them), so pick MP4 when it's offered.
+- **±1 frame** uses a frame-rate estimate taken during playback (24/25/29.97/30/60…). On variable-frame-rate videos a step may not be exactly one frame.
+- **`?video=URL`** downloads the video into a blob first, because Python's static server doesn't support HTTP Range requests (without them the video can't be seeked).
+- Braille reads 8 texels per cell, so its grid is 2× wider than the other modes. That's how braille works, not a bug.
+
+</details>
+
+<sub><b>08</b> &nbsp;·&nbsp; ROADMAP</sub>
+
+## What's next
 
 - [x] Characters, Braille, Dither and 3D Hex modes
 - [x] Video player with frame stepping
@@ -183,30 +305,16 @@ run.bat             static server for Windows (double-click)
 - [ ] Colored HTML / ANSI text export
 - [ ] Resizable sidebar and a better mobile layout
 
-## Limitations
+<br>
 
-- **Floyd–Steinberg dithering** (error diffusion) isn't available — this GPU version only has
-  *ordered* algorithms (bayer/halftone/lines). Floyd–Steinberg needs sequential error
-  propagation, which in practice means the CPU or a multi-pass shader.
-- **Shader effects**: only 4 common post FX so far (chromatic, scanline, vignette, grain).
-- **Fonts** depend on the system (`Courier New` → monospace fallback), so glyph shapes can
-  differ slightly between browsers.
-- **Video export** is recorded in real time (not encoded frame by frame): only frames that get
-  rendered end up in the file, so a slow GPU means a lower frame rate, and the tab must stay in
-  the foreground. WebM files from `MediaRecorder` don't store a duration in the header (some
-  players can't seek them) — pick MP4 when it's available.
-- **±1 frame** uses a frame-rate estimate taken during playback (e.g. 24/25/29.97/30/60). For
-  VFR (variable frame rate) videos a step may not be exactly one frame.
-- **`?video=URL`** downloads the video into a blob first, because Python's static server
-  doesn't support HTTP Range requests (without them the video can't be seeked).
-- Braille uses 8 texels per cell, so the braille grid is 2× wider than in the other modes —
-  that's the nature of braille, not a bug.
+<p align="center"><img src="docs/divider.svg" width="860" alt=""></p>
 
-## License & credits
+<div align="center">
 
-The algorithms used here (luma grid, glyph ramp, ordered dither, hex prisms, Sobel edge
-detection) are public techniques. The code was written for this project and is not a copy
-of any other app's code or assets. The sample image and clip are original 3D renders made
-for this project.
+<sub>The algorithms here (luma grid, glyph ramp, ordered dither, hex prisms, Sobel edges) are public techniques.<br>
+The code was written for this project, and the sample image and clip are original 3D renders.<br>
+The logo uses a subset of <a href="https://github.com/JetBrains/JetBrainsMono">JetBrains Mono</a> (<a href="docs/OFL-JetBrainsMono.txt">OFL 1.1</a>).</sub>
 
-Released under the [MIT](LICENSE) license. Inspired by [ascii-magic.com](https://ascii-magic.com).
+<sub>Released under the <a href="LICENSE">MIT</a> license &nbsp;·&nbsp; Inspired by <a href="https://ascii-magic.com">ascii-magic.com</a> &nbsp;·&nbsp; <a href="#top">Back to top ↑</a></sub>
+
+</div>
