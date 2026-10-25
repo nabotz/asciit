@@ -1,147 +1,150 @@
 # ASCIIt (GPU)
 
-Editor ASCII real-time yang jalan **100% di browser, di GPU kamu**.
-Tanpa server, tanpa akun, tanpa kredit, tanpa tracking.
+**English** · [Bahasa Indonesia](README.id.md)
 
-Semua render memakai WebGL2: sumber → tekstur grid kecil → **instanced glyph quads**
-(satu draw call untuk puluhan ribu karakter) → post FX → layar.
+A real-time ASCII art editor that runs **100% in your browser, on your GPU**.
+No server, no account, no credits, no tracking.
+
+Everything renders with WebGL2: source → small grid texture → **instanced glyph quads**
+(one draw call for tens of thousands of characters) → post FX → screen.
 
 ```
-sumber (gambar / video)
+source (image / video)
    │
-   ├─ pass 1  grid      : source → tekstur cols×rows (contrast/brightness/levels)
-   ├─ pass 2  glyph     : cols×rows instanced quad, slot atlas dipilih di vertex shader
-   │                       · characters : indeks ramp dari luma
-   │                       · braille    : 8 texel (2×4) → bitmask Unicode U+2800
-   │                       · dither     : fullscreen bayer8/halftone + palet
-   │                       · hex        : geometri prisma heksagon (instanced)
+   ├─ pass 1  grid      : source → cols×rows texture (contrast/brightness/levels)
+   ├─ pass 2  glyph     : cols×rows instanced quads, atlas slot picked in the vertex shader
+   │                       · characters : ramp index from luma
+   │                       · braille    : 8 texels (2×4) → Unicode U+2800 bitmask
+   │                       · dither     : fullscreen bayer8/halftone + palette
+   │                       · hex        : hexagonal prism geometry (instanced)
    └─ pass 3  post FX   : chromatic · scanline · vignette · grain
 ```
 
-## Jalankan
+## Run it
 
-Butuh Python 3 saja (untuk server statis) + browser modern dengan WebGL2.
+All you need is Python 3 (for a static file server) and a modern browser with WebGL2.
 
 ```bash
 git clone https://github.com/nabotz/asciit.git
 cd asciit
 ./run.sh            # default port 8123
-# atau: python3 -m http.server 8123 --bind 127.0.0.1
+# or: python3 -m http.server 8123 --bind 127.0.0.1
 ```
 
-Buka **http://localhost:8123**. Video contoh: **http://localhost:8123/?video=assets/demo.mp4**.
+Open **http://localhost:8123**. Sample video: **http://localhost:8123/?video=assets/demo.mp4**.
 
-**Windows:** klik dua kali `run.bat` (atau `run.bat 8124` dari terminal untuk port lain).
-Script ini mencari Python 3 (`py` / `python` / `python3`), membuka browser otomatis, dan
-memaksa file `.js` dikirim sebagai `text/javascript` — di sebagian Windows registry
-mendaftarkan `.js` sebagai `text/plain`, dan browser menolak ES module dengan tipe itu.
+**Windows:** double-click `run.bat` (or run `run.bat 8124` from a terminal for another port).
+The script finds Python 3 (`py` / `python` / `python3`), opens the browser for you, and
+forces `.js` files to be served as `text/javascript` — some Windows registries map `.js`
+to `text/plain`, and browsers refuse to load ES modules with that type.
 
-> Kenapa perlu server? Browser memblokir ES module + tekstur dari `file://`.
-> `./run.sh` cuma `http.server` bawaan Python — tidak ada dependensi.
+> Why a server? Browsers block ES modules and textures loaded from `file://`.
+> `./run.sh` is just Python's built-in `http.server` — no dependencies.
 
-## Yang bisa dilakukan
+## Features
 
-| Mode | Keterangan |
+| Mode | Description |
 |---|---|
-| **Characters** | ramp glyph, 6 preset + charset manual, warna asli per cell, edge boost |
-| **Braille** | 2×4 titik per cell, dibaca dari 8 texel (bukan ramp tiruan), Unicode asli |
-| **Dither** | bayer8 / halftone / lines + 6 palet (mono, grey4, gameboy, pico8, cga, cyberpunk) |
-| **3D Hex** | prisma heksagon 3 muka (1.35 / 1.0 / 0.55) — geometri instanced |
+| **Characters** | glyph ramp, 6 presets + custom charset, original color per cell, edge boost |
+| **Braille** | 2×4 dots per cell, read from 8 texels (not a fake ramp), real Unicode |
+| **Dither** | bayer8 / halftone / lines + 6 palettes (mono, grey4, gameboy, pico8, cga, cyberpunk) |
+| **3D Hex** | three-faced hexagonal prisms (1.35 / 1.0 / 0.55 shading) — instanced geometry |
 
-Kontrol: kolom grid, ukuran cell, contrast/brightness/invert, edge boost, 4 post FX,
-player video (play/pause, timeline, ±1 frame, kecepatan, suara), dan ekspor **PNG**,
-**TXT** (teks ASCII, bisa langsung disalin), serta **video** MP4/WebM.
+Controls: grid columns, cell size, contrast/brightness/invert, edge boost, 4 post FX,
+a video player (play/pause, timeline, ±1 frame, speed, sound), and **PNG**, **TXT**
+(ASCII text, ready to copy) and **video** (MP4/WebM) export.
 
-Shortcut: `1`–`4` ganti mode · `spasi` play/pause · `←`/`→` ±1 frame ·
-`Shift`+`←`/`→` ±1 detik · `E` simpan PNG · `T` simpan TXT.
+Shortcuts: `1`–`4` switch mode · `space` play/pause · `←`/`→` ±1 frame ·
+`Shift`+`←`/`→` ±1 second · `E` save PNG · `T` save TXT.
 
-Sumber bisa dipilih lewat tombol file atau di-drag & drop ke mana saja di jendela.
+Load a source with the file button, or by dragging & dropping it anywhere on the window.
 
-Bahasa UI: **Indonesia / English** — tombol `ID`/`EN` di kiri atas, pilihan disimpan di browser.
-Bahasa awal mengikuti bahasa browser; `?lang=en` atau `?lang=id` di URL untuk memaksa sekali buka.
+UI language: **English / Indonesian** — `EN`/`ID` buttons in the top-left corner; your choice is
+remembered in the browser. The initial language follows your browser; add `?lang=en` or
+`?lang=id` to the URL to force one for a single visit.
 
 ## GPU
 
-Semua kerja berat ada di GPU lewat WebGL2 (bukan canvas 2D):
+All the heavy lifting happens on the GPU through WebGL2 (not canvas 2D):
 
-- **1 draw call** untuk seluruh grid karakter (`drawArraysInstanced`).
-- Atlas glyph dibuat sekali per charset/font-size, disimpan sebagai tekstur.
-- Video diproses sebagai tekstur tiap frame (`texImage2D`) — tidak ada `getImageData`
-  per frame, jadi tidak ada readback CPU yang bikin lambat.
-- Satu-satunya readback: 64×64 piksel untuk auto-levels (min/max luma per frame).
+- **1 draw call** for the whole character grid (`drawArraysInstanced`).
+- The glyph atlas is built once per charset/font size and stored as a texture.
+- Video frames are uploaded as textures (`texImage2D`) — no per-frame `getImageData`,
+  so there is no slow CPU readback.
+- The only readback: 64×64 pixels for auto-levels (min/max luma per frame).
 
-Angka FPS ada di kiri bawah. Di mesin uji ini (software renderer SwiftShader,
-tanpa GPU) 880×884 jalan ~7 fps — di GPU nyata pola pemakaiannya ringan:
-110×68 = 7.480 instance per frame itu kecil, 4K dengan 300 kolom (±51.000 instance)
-masih nyaman. Kalau terasa berat: turunkan kolom/ukuran cell atau matikan post FX.
+The FPS counter sits in the bottom-left corner. The load is light for a real GPU: the
+default demo (110 columns) is just 110×38 = 4,180 instances per frame, and 300 columns on a
+16:9 source (~31,000 instances) is still comfortable. On a software renderer without a GPU
+(SwiftShader) it only manages a few fps. If it feels heavy, lower the columns/cell size or
+turn off post FX.
 
-## Ekspor
+## Export
 
-- **PNG** — frame yang sedang tampil, resolusi = `cols × cell` (mis. 110 × 8 → 880 px).
-  Tombol `PNG` / `E`. Untuk video: pause, lalu pilih frame lewat timeline atau `←`/`→`.
-- **TXT / Salin** — teks ASCII frame yang sedang tampil (mode Characters & Braille).
-  Karakternya dipilih dengan rumus yang sama persis dengan shader. Tombol `TXT` / `T`,
-  atau `Salin` ke clipboard. Buka dengan font monospace; braille butuh font yang punya
-  glyph U+2800–U+28FF.
-- **Video** — direkam real-time dari canvas lewat `MediaRecorder`:
-  - *1 putaran penuh*: dari 0:00 sampai akhir video, kecepatan dipaksa 1×;
-  - *durasi kustom*: N detik dari 0:00 (video diulang kalau lebih pendek);
-  - format yang muncul hanya yang didukung browser: **MP4 (H.264)** di Chrome/Edge versi
-    baru, **WebM (VP9/VP8)** di Chrome/Edge/Firefox;
-  - audio video ikut terekam kalau dicentang dan videonya bersuara;
-  - ada progres + tombol Batal; posisi, kecepatan, dan status play dikembalikan setelah selesai.
+- **PNG** — the frame currently on screen, at `cols × cell` resolution (e.g. 110 × 8 → 880 px).
+  `PNG` button / `E`. For video: pause, then pick the frame with the timeline or `←`/`→`.
+- **TXT / Copy** — ASCII text of the current frame (Characters & Braille modes). Characters
+  are picked with exactly the same formula as the shader. `TXT` button / `T`, or `Copy` to the
+  clipboard. Open it with a monospace font; braille needs a font with glyphs U+2800–U+28FF.
+- **Video** — recorded in real time from the canvas with `MediaRecorder`:
+  - *1 full loop*: from 0:00 to the end of the video, speed forced to 1×;
+  - *custom duration*: N seconds from 0:00 (the video loops if it is shorter);
+  - only formats your browser supports are listed: **MP4 (H.264)** in recent Chrome/Edge,
+    **WebM (VP9/VP8)** in Chrome/Edge/Firefox;
+  - the video's audio is included when the box is checked and the video has sound;
+  - progress bar + Cancel button; position, speed and play state are restored afterwards.
 
-## Struktur
+## Project structure
 
 ```
-index.html          UI + kontrol (tanpa framework)
-js/shaders.js       semua GLSL: grid, glyph, dither, hex, post
-js/gl.js            helper WebGL2: program, FBO, atlas glyph, geometri hex
-js/main.js          state, render loop, sumber (image/video), ekspor
-js/i18n.js          teks UI dua bahasa (Indonesia / English)
-assets/demo.jpg     gambar contoh
-assets/demo.mp4     klip contoh 4 detik
-run.sh              server statis
-run.bat             server statis untuk Windows (klik dua kali)
+index.html          UI + controls (no framework)
+js/shaders.js       all GLSL: grid, glyph, dither, hex, post
+js/gl.js            WebGL2 helpers: programs, FBOs, glyph atlas, hex geometry
+js/main.js          state, render loop, sources (image/video), export
+js/i18n.js          two-language UI strings (Indonesian / English)
+assets/demo.jpg     sample image
+assets/demo.mp4     4-second sample clip
+run.sh              static server
+run.bat             static server for Windows (double-click)
 ```
 
-## Cara menambah
+## Extending
 
-- **Charset baru**: tambahkan ke `RAMP_PRESETS` di `js/main.js` (atau ketik langsung
-  di kolom Charset). Atlas dibangun ulang otomatis.
-- **Palet dither baru**: tambahkan array RGB ke `PALETTES` dan `<option>` di `index.html`
-  (maksimum 16 warna, seragam `uPalette[16]`).
-- **Post FX baru**: salin satu blok di `FS_POST` (`js/shaders.js`) + slider baru di
-  `index.html` lalu teruskan uniform-nya di `main.js`.
-- **Efek shader lain** (halftone, thermal, glitch, dst): masing-masing butuh shader
-  sendiri; tambahkan sebagai pass baru antara scene dan post.
-- **Bahasa baru**: salin blok `en` di `js/i18n.js`, ganti kodenya (mis. `ja`), terjemahkan
-  isinya, lalu tambahkan tombol `<button data-lang="ja">JA</button>` di `index.html`.
+- **New charset**: add it to `RAMP_PRESETS` in `js/main.js` (or type it straight into the
+  Charset field). The atlas is rebuilt automatically.
+- **New dither palette**: add an RGB array to `PALETTES` and an `<option>` in `index.html`
+  (16 colors max, uniform `uPalette[16]`).
+- **New post FX**: copy a block in `FS_POST` (`js/shaders.js`), add a slider in `index.html`,
+  then pass its uniform in `main.js`.
+- **Other shader effects** (halftone, thermal, glitch, …): each needs its own shader; add it as
+  a new pass between scene and post.
+- **New UI language**: copy the `en` block in `js/i18n.js`, change its code (e.g. `ja`),
+  translate it, then add a `<button data-lang="ja">JA</button>` in `index.html`.
 
-## Batasan
+## Limitations
 
-- **Dither Floyd–Steinberg** (error diffusion) tidak ada di sini — versi GPU ini hanya
-  algoritma *ordered* (bayer/halftone/lines). Floyd butuh propagasi error berurutan,
-  praktisnya di CPU/shader multi-pass.
-- **Efek shader** baru 4 post FX umum (chromatic, scanline, vignette, grain); efek lain
-  seperti halftone, glitch, atau thermal belum ada.
-- **Font** bergantung pada font sistem (`Courier New` → fallback monospace). Bentuk glyph
-  bisa beda tipis dari browser lain.
-- **Video ekspor** direkam real-time (bukan encode per frame): frame yang masuk = frame yang
-  sempat dirender, jadi di GPU lambat fps hasilnya turun; tab harus tetap di depan.
-  File WebM dari `MediaRecorder` tidak menyimpan durasi di header (sebagian player tidak
-  bisa seek) — pilih MP4 kalau tersedia.
-- **±1 frame** memakai perkiraan fps dari pemutaran (mis. 24/25/29,97/30/60). Untuk video
-  VFR (fps berubah-ubah) langkahnya bisa tidak persis 1 frame.
-- **`?video=URL`** mengunduh video dulu jadi blob, karena server statis Python tidak
-  mendukung HTTP Range (tanpa itu video tidak bisa di-seek).
-- Braille memakai 8 texel per cell sehingga grid braille 2× lebih lebar dari mode lain —
-  itu memang sifat braille, bukan bug.
+- **Floyd–Steinberg dithering** (error diffusion) isn't available — this GPU version only has
+  *ordered* algorithms (bayer/halftone/lines). Floyd–Steinberg needs sequential error
+  propagation, which in practice means the CPU or a multi-pass shader.
+- **Shader effects**: only 4 common post FX so far (chromatic, scanline, vignette, grain);
+  effects such as halftone, glitch or thermal aren't there yet.
+- **Fonts** depend on the system (`Courier New` → monospace fallback), so glyph shapes can
+  differ slightly between browsers.
+- **Video export** is recorded in real time (not encoded frame by frame): only frames that get
+  rendered end up in the file, so a slow GPU means a lower frame rate, and the tab must stay in
+  the foreground. WebM files from `MediaRecorder` don't store a duration in the header (some
+  players can't seek them) — pick MP4 when it's available.
+- **±1 frame** uses a frame-rate estimate taken during playback (e.g. 24/25/29.97/30/60). For
+  VFR (variable frame rate) videos a step may not be exactly one frame.
+- **`?video=URL`** downloads the video into a blob first, because Python's static server
+  doesn't support HTTP Range requests (without them the video can't be seeked).
+- Braille uses 8 texels per cell, so the braille grid is 2× wider than in the other modes —
+  that's the nature of braille, not a bug.
 
-## Lisensi & kredit
+## License & credits
 
-Algoritma yang dipakai di sini (luma grid, ramp glyph, ordered dither, prisma hex,
-deteksi tepi Sobel) adalah teknik publik. Kode ini ditulis sendiri, bukan salinan kode
-atau aset aplikasi lain.
+The algorithms used here (luma grid, glyph ramp, ordered dither, hex prisms, Sobel edge
+detection) are public techniques. The code was written for this project and is not a copy
+of any other app's code or assets.
 
-Dirilis dengan lisensi [MIT](LICENSE). Terinspirasi dari [ascii-magic.com](https://ascii-magic.com).
+Released under the [MIT](LICENSE) license. Inspired by [ascii-magic.com](https://ascii-magic.com).
