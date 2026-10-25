@@ -818,6 +818,14 @@ function bindUI() {
     $(id + 'v').textContent = fmt(state[key]);
   };
 
+  // samakan pilihan awal kontrol dengan state (sebelumnya dropdown palet tampil "mono"
+  // padahal yang dipakai "gameboy")
+  $('mode').value = state.mode;
+  $('palette').value = state.palette;
+  $('dalgo').value = String(state.ditherAlgo);
+  $('invert').checked = state.invert;
+  $('preset').value = Object.keys(RAMP_PRESETS).find((k) => RAMP_PRESETS[k] === state.charset) || 'default';
+
   $('mode').onchange = (e) => { state.mode = e.target.value; dirty = true; updateExportUI(); };
   bindRange('cols', 'cols');
   bindRange('cell', 'cell');
