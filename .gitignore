@@ -1,0 +1,9 @@
+# file sistem
+.DS_Store
+Thumbs.db
+desktop.ini
+# hasil ekspor yang tidak sengaja tersimpan di folder proyek
+ascii-*.png
+ascii-*.txt
+ascii-*.mp4
+ascii-*.webm

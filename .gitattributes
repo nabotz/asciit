@@ -1,0 +1,7 @@
+* text=auto
+# run.bat harus CRLF (cmd Windows), run.sh harus LF (bash)
+*.bat text eol=crlf
+*.sh  text eol=lf
+*.jpg binary
+*.png binary
+*.mp4 binary

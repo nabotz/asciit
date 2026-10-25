@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ASCIIt — GPU</title>
+<style>
+:root {
+  --bg: #0c0c0e; --panel: #141417; --line: #26262b; --fg: #e9e9ef;
+  --dim: #8b8b96; --accent: #7bf1a8;
+  --side: 380px;   /* lebar sidebar */
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  display: grid; grid-template-columns: var(--side) 1fr; height: 100vh; overflow: hidden;
+}
+aside {
+  border-right: 1px solid var(--line); background: var(--panel);
+  padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+}
+h1 { font-size: 14px; margin: 0 0 2px; letter-spacing: .02em; }
+h1 span { color: var(--accent); }
+.sub { color: var(--dim); font-size: 11px; margin-bottom: 4px; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 2px; }
+.lang { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; flex: 0 0 auto; }
+.lang button { width: auto; border: 0; border-radius: 0; padding: 3px 8px; font-size: 11px;
+               letter-spacing: .04em; background: transparent; color: var(--dim); }
+.lang button + button { border-left: 1px solid var(--line); }
+.lang button.on { background: var(--accent); color: #06120b; font-weight: 600; }
+label { display: block; font-size: 11px; color: var(--dim); margin-bottom: 4px;
+        text-transform: uppercase; letter-spacing: .05em; }
+select, input[type=text], input[type=file] {
+  width: 100%; background: #0e0e11; color: var(--fg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 8px; font: inherit;
+}
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.row { display: flex; align-items: center; gap: 8px; }
+.row .val { font-variant-numeric: tabular-nums; color: var(--fg); font-size: 11px;
+            min-width: 42px; text-align: right; }
+.group { border-top: 1px solid var(--line); padding-top: 12px; }
+button {
+  width: 100%; background: #1c1c21; color: var(--fg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 7px 10px; font: inherit; cursor: pointer;
+}
+button:hover { background: #24242b; }
+button.primary { background: var(--accent); color: #06120b; border-color: transparent; font-weight: 600; }
+main { position: relative; display: grid; place-items: center; overflow: hidden; padding: 16px;
+       min-width: 0; min-height: 0; }
+/* overlay sorot saat file di-drag (lapisan terpisah, tidak menghalangi klik) */
+#drop {
+  position: absolute; inset: 0; pointer-events: none;
+  border: 2px dashed transparent; transition: .15s;
+}
+#drop.over { border-color: var(--accent); background: rgba(123,241,168,.05); }
+canvas { max-width: 100%; max-height: 100%; image-rendering: pixelated;
+         box-shadow: 0 0 60px rgba(0,0,0,.7); }
+#hud {
+  position: absolute; left: 20px; bottom: 16px; font-size: 11px; color: var(--dim);
+  font-variant-numeric: tabular-nums; display: flex; gap: 14px; align-items: center;
+}
+#status { color: var(--accent); }
+kbd { background: #1c1c21; border: 1px solid var(--line); border-radius: 4px;
+      padding: 1px 5px; font-size: 10px; }
+input[type=number] {
+  background: #0e0e11; color: var(--fg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 8px; font: inherit;
+}
+button:disabled, select:disabled, input:disabled { opacity: .45; cursor: not-allowed; }
+progress { width: 100%; height: 6px; accent-color: var(--accent); }
+
+/* ---- player video ---- */
+main.has-player { padding-bottom: 84px; }
+main.has-player #hud { bottom: 72px; }
+#player {
+  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+  width: min(760px, calc(100% - 32px)); display: flex; align-items: center; gap: 8px;
+  background: rgba(20, 20, 23, .92); border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 10px; backdrop-filter: blur(6px);
+}
+#player[hidden] { display: none; }
+#player button {
+  width: auto; padding: 5px 7px; display: grid; place-items: center; line-height: 0;
+}
+#player svg { width: 16px; height: 16px; fill: currentColor; }
+#player #pplay { background: var(--accent); color: #06120b; border-color: transparent; }
+#player input[type=range] { flex: 1; min-width: 80px; }
+#player .time { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums;
+                white-space: nowrap; min-width: 108px; text-align: center; }
+#player select { width: auto; padding: 4px 6px; }
+.btnrow { display: flex; gap: 8px; }
+.btnrow button { flex: 1; }
+#vprog { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+#vprog[hidden] { display: none; }
+#vprog .row button { width: auto; }
+
+@media (max-width: 820px) {
+  body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  aside { flex-direction: row; flex-wrap: wrap; max-height: 45vh; }
+  #player { flex-wrap: wrap; }
+  #player .time { min-width: 0; }
+  main.has-player { padding-bottom: 120px; }
+  main.has-player #hud { bottom: 110px; }
+}
+</style>
+</head>
+<body>
+<aside>
+  <div>
+    <div class="head">
+      <h1>ASCII<span>t</span></h1>
+      <div class="lang" role="group" data-i18n-aria="lang.aria" aria-label="Bahasa">
+        <button data-lang="id" title="Bahasa Indonesia">ID</button>
+        <button data-lang="en" title="English">EN</button>
+      </div>
+    </div>
+    <div class="sub" data-i18n="tagline">GPU renderer · 4 mode · post FX · ekspor</div>
+  </div>
+
+  <div>
+    <label data-i18n="src.label">Sumber</label>
+    <input type="file" id="file" accept="image/*,video/*" hidden>
+    <div class="btnrow">
+      <button id="pick" data-i18n="src.open" data-i18n-title="src.open.title">Buka gambar/video</button>
+    </div>
+    <div class="sub" id="srcname" style="margin-top:8px">demo</div>
+  </div>
+
+  <div class="group">
+    <label data-i18n="mode.label">Mode</label>
+    <select id="mode">
+      <option value="characters" data-i18n="mode.characters">Characters (ramp)</option>
+      <option value="braille" data-i18n="mode.braille">Braille (2×4 titik)</option>
+      <option value="dither" data-i18n="mode.dither">Dither (bayer + palet)</option>
+      <option value="hex" data-i18n="mode.hex">3D Hex</option>
+    </select>
+  </div>
+
+  <div class="group">
+    <label data-i18n="cols.label">Kolom (grid)</label>
+    <div class="row"><input type="range" id="cols" min="20" max="320" step="1"><span class="val" id="colsv"></span></div>
+    <label style="margin-top:10px" data-i18n="cell.label">Ukuran cell (px)</label>
+    <div class="row"><input type="range" id="cell" min="3" max="24" step="1"><span class="val" id="cellv"></span></div>
+  </div>
+
+  <div class="group">
+    <label data-i18n="preset.label">Charset preset</label>
+    <select id="preset">
+      <option value="default">default @#S08Xx+=-;:. </option>
+      <option value="standard">standard @%#*+=-:. </option>
+      <option value="blocks">blocks █▓▒░</option>
+      <option value="minimal">minimal #=-.</option>
+      <option value="binary">binary 10</option>
+      <option value="dots">dots ●◕◑◔∙</option>
+    </select>
+    <label style="margin-top:10px" data-i18n="charset.label">Charset manual</label>
+    <input type="text" id="charset" spellcheck="false">
+    <div class="row" style="margin-top:8px">
+      <label for="invert" style="margin:0; flex:1" data-i18n="invert.label">Invert</label>
+      <input type="checkbox" id="invert">
+    </div>
+  </div>
+
+  <div class="group">
+    <label data-i18n="contrast.label">Contrast</label>
+    <div class="row"><input type="range" id="contrast" min="-50" max="100" step="1"><span class="val" id="contrastv"></span></div>
+    <label style="margin-top:10px" data-i18n="bright.label">Brightness</label>
+    <div class="row"><input type="range" id="bright" min="-100" max="100" step="1"><span class="val" id="brightv"></span></div>
+    <label style="margin-top:10px" data-i18n="edge.label">Edge boost</label>
+    <div class="row"><input type="range" id="edge" min="0" max="1" step="0.05"><span class="val" id="edgev"></span></div>
+  </div>
+
+  <div class="group">
+    <label data-i18n="palette.label">Palet dither</label>
+    <select id="palette">
+      <option value="mono">mono</option>
+      <option value="grey4">grey4</option>
+      <option value="gameboy">gameboy</option>
+      <option value="pico8">pico8 (16)</option>
+      <option value="cga">cga</option>
+      <option value="cyberpunk">cyberpunk</option>
+    </select>
+    <label style="margin-top:10px" data-i18n="dalgo.label">Algoritma</label>
+    <select id="dalgo">
+      <option value="0">bayer 8×8</option>
+      <option value="1">halftone (radial)</option>
+      <option value="2">lines</option>
+    </select>
+    <label style="margin-top:10px" data-i18n="dithercell.label">Ukuran titik</label>
+    <div class="row"><input type="range" id="dithercell" min="2" max="40" step="1"><span class="val" id="dithercellv"></span></div>
+  </div>
+
+  <div class="group">
+    <label>Post FX</label>
+    <label style="text-transform:none;margin-top:4px">Chromatic</label>
+    <div class="row"><input type="range" id="fchroma" min="0" max="12" step="0.5"><span class="val" id="fchromav"></span></div>
+    <label style="text-transform:none;margin-top:6px">Scanline</label>
+    <div class="row"><input type="range" id="fscan" min="0" max="1" step="0.05"><span class="val" id="fscanv"></span></div>
+    <label style="text-transform:none;margin-top:6px">Vignette</label>
+    <div class="row"><input type="range" id="fvign" min="0" max="1" step="0.05"><span class="val" id="fvignv"></span></div>
+    <label style="text-transform:none;margin-top:6px">Grain</label>
+    <div class="row"><input type="range" id="fgrain" min="0" max="1" step="0.05"><span class="val" id="fgrainv"></span></div>
+  </div>
+
+  <div class="group">
+    <label data-i18n="export.frame">Ekspor frame</label>
+    <div class="btnrow">
+      <button id="png" class="primary" data-i18n-title="png.title" title="Simpan frame sebagai PNG (E)">PNG</button>
+      <button id="txt" data-i18n-title="txt.title" title="Simpan teks ASCII frame ini (T)">TXT</button>
+      <button id="copytxt" data-i18n="copy.label" data-i18n-title="copy.title" title="Salin teks ASCII ke clipboard">Salin</button>
+    </div>
+    <div class="sub" id="txtnote" style="margin-top:6px" data-i18n="txt.note" hidden>TXT/Salin hanya untuk mode Characters &amp; Braille.</div>
+  </div>
+
+  <div class="group">
+    <label data-i18n="export.video">Ekspor video</label>
+    <select id="vfmt"></select>
+    <div class="row" style="margin-top:8px">
+      <select id="vdur" style="flex:1; width:auto; min-width:0">
+        <option value="loop" data-i18n="vdur.loop">1 putaran penuh (dari 0:00)</option>
+        <option value="custom" data-i18n="vdur.custom">Durasi kustom</option>
+      </select>
+      <input type="number" id="vsecs" min="1" max="600" step="1" value="10" style="width:64px"
+             data-i18n-title="vsecs.title" title="Durasi rekaman (detik)">
+      <span class="sub" style="margin:0" data-i18n="unit.sec">dtk</span>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <label for="vaudio" style="margin:0; flex:1" data-i18n="vaudio.label">Sertakan audio video</label>
+      <input type="checkbox" id="vaudio" checked>
+    </div>
+    <button id="vrec" style="margin-top:8px" data-i18n="vrec.label">Rekam video</button>
+    <div id="vprog" hidden>
+      <progress id="vbar" max="1" value="0"></progress>
+      <div class="row">
+        <span class="sub" id="vtext" style="margin:0; flex:1"></span>
+        <button id="vcancel" data-i18n="vcancel.label">Batal</button>
+      </div>
+    </div>
+    <div class="sub" id="vnote" style="margin-top:8px" data-i18n="vnote">Hanya untuk sumber video. Rekaman berjalan real-time, jadi biarkan tab ini tetap di depan.</div>
+  </div>
+
+  <div class="group">
+    <div class="sub" data-i18n-html="shortcuts">
+      <kbd>1</kbd>–<kbd>4</kbd> mode · <kbd>spasi</kbd> play/pause ·
+      <kbd>←</kbd>/<kbd>→</kbd> ±1 frame · <kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd> ±1 dtk ·
+      <kbd>E</kbd> PNG · <kbd>T</kbd> TXT
+    </div>
+  </div>
+</aside>
+
+<main id="stage">
+  <div id="drop"></div>
+  <canvas id="out" width="640" height="480"></canvas>
+  <div id="hud"><span id="fps"></span><span id="status"></span></div>
+  <div id="player" hidden>
+    <button id="pback" data-i18n-title="p.back" title="Mundur 1 frame (←)">
+      <svg viewBox="0 0 16 16"><path d="M3 3h2v10H3zM13 3v10L6 8z"/></svg>
+    </button>
+    <button id="pplay" data-i18n-title="p.play" title="Play/pause (spasi)">
+      <svg id="icoplay" viewBox="0 0 16 16"><path d="M4 2.5v11L13.5 8z"/></svg>
+      <svg id="icopause" viewBox="0 0 16 16" style="display:none"><path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/></svg>
+    </button>
+    <button id="pfwd" data-i18n-title="p.fwd" title="Maju 1 frame (→)">
+      <svg viewBox="0 0 16 16"><path d="M11 3h2v10h-2zM3 3v10l7-5z"/></svg>
+    </button>
+    <span class="time" id="ptime">0:00.00 / 0:00.00</span>
+    <input type="range" id="pseek" min="0" max="1" step="0.001" value="0" data-i18n-title="p.seek" title="Geser untuk lompat">
+    <select id="prate" data-i18n-title="p.rate" title="Kecepatan putar">
+      <option value="0.25">0.25×</option>
+      <option value="0.5">0.5×</option>
+      <option value="1" selected>1×</option>
+      <option value="1.5">1.5×</option>
+      <option value="2">2×</option>
+    </select>
+    <button id="pmute" data-i18n-title="p.mute" title="Suara on/off">
+      <svg id="icomute" viewBox="0 0 16 16"><path d="M2 6h3l4-3.5v11L5 10H2zM11 5.6l1-1 1.5 1.5L15 4.6l1 1-1.5 1.5L16 8.6l-1 1-1.5-1.5L12 9.6l-1-1 1.5-1.5z"/></svg>
+      <svg id="icosound" viewBox="0 0 16 16" style="display:none"><path d="M2 6h3l4-3.5v11L5 10H2zM11 4.5a5 5 0 0 1 0 7l-1-1a3.6 3.6 0 0 0 0-5zM12.8 2.7a7.5 7.5 0 0 1 0 10.6l-1-1a6.1 6.1 0 0 0 0-8.6z"/></svg>
+    </button>
+  </div>
+</main>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
