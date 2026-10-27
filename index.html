@@ -137,7 +137,7 @@ main.has-player #hud { bottom: 72px; }
     <select id="mode">
       <option value="characters" data-i18n="mode.characters">Characters (ramp)</option>
       <option value="braille" data-i18n="mode.braille">Braille (2×4 titik)</option>
-      <option value="dither" data-i18n="mode.dither">Dither (bayer + palet)</option>
+      <option value="dither" data-i18n="mode.dither">Dither + palet</option>
       <option value="hex" data-i18n="mode.hex">3D Hex</option>
     </select>
   </div>
@@ -191,6 +191,7 @@ main.has-player #hud { bottom: 72px; }
       <option value="0">bayer 8×8</option>
       <option value="1">halftone (radial)</option>
       <option value="2">lines</option>
+      <option value="3">Floyd–Steinberg</option>
     </select>
     <label style="margin-top:10px" data-i18n="dithercell.label">Ukuran titik</label>
     <div class="row"><input type="range" id="dithercell" min="2" max="40" step="1"><span class="val" id="dithercellv"></span></div>

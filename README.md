@@ -61,7 +61,7 @@
 <td width="33%" valign="top">
 <img src="docs/icon-gpu.svg" width="44" alt=""><br>
 <b>One draw call</b><br>
-<sub>The whole grid is a single instanced draw. No per-frame CPU readback.</sub>
+<sub>The whole character grid is a single instanced draw, with no per-frame CPU readback.</sub>
 </td>
 <td width="33%" valign="top">
 <img src="docs/icon-zero.svg" width="44" alt=""><br>
@@ -98,7 +98,7 @@
 <td width="50%" valign="top">
 <img src="docs/mode-dither.png" alt="Dither mode"><br>
 <kbd>3</kbd> &nbsp;<b>Dither</b><br>
-<sub>bayer8, halftone or lines, with 6 palettes: mono, grey4, gameboy, pico8, cga, cyberpunk.</sub>
+<sub>bayer8, halftone, lines or Floyd–Steinberg, with 6 palettes: mono, grey4, gameboy, pico8, cga, cyberpunk.</sub>
 </td>
 <td width="50%" valign="top">
 <img src="docs/mode-hex.png" alt="3D Hex mode"><br>
@@ -226,7 +226,8 @@ source (image / video)
    ├─ pass 2  glyph     : cols×rows instanced quads, atlas slot picked in the vertex shader
    │                       · characters : ramp index from luma
    │                       · braille    : 8 texels (2×4) → Unicode U+2800 bitmask
-   │                       · dither     : fullscreen bayer8/halftone + palette
+   │                       · dither     : fullscreen bayer8/halftone/lines + palette
+   │                                      (Floyd–Steinberg: small grid → CPU error diffusion → blocks)
    │                       · hex        : hexagonal prism geometry (instanced)
    └─ pass 3  post FX   : chromatic · scanline · vignette · grain
 ```
@@ -234,7 +235,7 @@ source (image / video)
 - **1 draw call** for the whole character grid (`drawArraysInstanced`).
 - The glyph atlas is built once per charset and font size, and kept as a texture.
 - Video frames are uploaded as textures (`texImage2D`). No per-frame `getImageData`, so no slow CPU readback.
-- The only readback is 64×64 pixels for auto-levels (min/max luma per frame).
+- The only readbacks are 64×64 pixels for auto-levels (min/max luma per frame) and, with Floyd–Steinberg, the small dither grid (output size ÷ dot size).
 
 The load is light for a real GPU: the default demo (110 columns) is 110×38 = 4,180 instances per
 frame, and 300 columns on a 16:9 source (~31,000 instances) is still comfortable. On a software
@@ -253,6 +254,7 @@ index.html          UI + controls (no framework)
 js/shaders.js       all GLSL: grid, glyph, dither, hex, post
 js/gl.js            WebGL2 helpers: programs, FBOs, glyph atlas, hex geometry
 js/main.js          state, render loop, sources (image/video), export
+js/dither.js        Floyd–Steinberg error diffusion (CPU)
 js/i18n.js          two-language UI strings (English / Indonesian)
 assets/demo.jpg     sample image
 assets/demo.mp4     4-second sample clip
@@ -281,7 +283,8 @@ run.bat             static server for Windows (double-click)
 
 <br>
 
-- **No Floyd–Steinberg dithering** (error diffusion). This GPU version only has *ordered* algorithms (bayer/halftone/lines); error diffusion needs sequential propagation, which means the CPU or a multi-pass shader.
+- **Floyd–Steinberg runs on the CPU.** Error diffusion is sequential, so it can't run in a WebGL2 fragment shader. The GPU prepares a small grid (output size ÷ dot size), JavaScript diffuses the error, and the GPU draws the result as blocks.
+- **Floyd–Steinberg shimmers on video.** A small change in one pixel moves the error along to the pixels after it, so the pattern shifts between frames even where the picture stands still. On the sample clip, 10–25% of the dots whose input didn't change still flipped each frame; bayer, halftone and lines stay put. Use those for video.
 - **Shader effects:** only 4 common post FX so far (chromatic, scanline, vignette, grain).
 - **Fonts** come from the system (`Courier New`, then any monospace), so glyph shapes can differ slightly between browsers.
 - **Video export is real-time**, not frame-by-frame encoding: only frames that get rendered end up in the file, so a slow GPU lowers the frame rate, and the tab must stay in front. WebM files from `MediaRecorder` have no duration in the header (some players can't seek them), so pick MP4 when it's offered.
@@ -299,7 +302,7 @@ run.bat             static server for Windows (double-click)
 - [x] Video player with frame stepping
 - [x] PNG, TXT and MP4/WebM export
 - [x] English / Indonesian UI
-- [ ] Floyd–Steinberg (error-diffusion) dithering
+- [x] Floyd–Steinberg (error-diffusion) dithering
 - [ ] More shader effects (halftone, glitch, thermal)
 - [ ] Frame-accurate video export with WebCodecs (no dropped frames)
 - [ ] Colored HTML / ANSI text export

@@ -1,6 +1,7 @@
 // main.js — renderer ASCII lokal: image/video -> glyph GPU -> post FX -> ekspor
 import { createProgram, makeTexture, makeFBO, buildAtlas, hexGeometry } from './gl.js';
 import * as S from './shaders.js';
+import { floydSteinberg } from './dither.js';
 import { t as tr, initI18n, setLang, getLang, onLangChange } from './i18n.js';
 
 const RAMP_PRESETS = {
@@ -39,7 +40,7 @@ const state = {
   invert: false,
   edge: 0,
   palette: 'gameboy',
-  ditherAlgo: 0,           // 0 bayer8, 1 halftone, 2 lines
+  ditherAlgo: 0,           // 0 bayer8, 1 halftone, 2 lines, 3 floyd-steinberg (CPU)
   ditherCell: 8,
   post: { chroma: 0, scan: 0, vignette: 0, grain: 0 },
 };
@@ -52,6 +53,10 @@ let quadVAO = null, glyphVAO = null, hexVAO = null;
 let dirty = true;
 let frames = 0, lastFps = performance.now(), fps = 0;
 let levelCanvas = null, levelCtx = null, levelRange = [0, 1];
+// Floyd–Steinberg: grid kecil di GPU -> error diffusion di CPU -> tekstur hasil
+const ALGO_FLOYD = 3;
+let edFBO = null, edTex = null, edSrc = null, edDst = null;
+let edStats = { w: 0, h: 0, ms: 0 };
 
 const $ = (id) => document.getElementById(id);
 
@@ -65,6 +70,7 @@ function initGL() {
     grid: createProgram(gl, S.VS_GRID, S.FS_GRID, 'grid'),
     glyph: createProgram(gl, S.VS_GLYPH, S.FS_GLYPH, 'glyph'),
     dither: createProgram(gl, S.VS_QUAD, S.FS_DITHER, 'dither'),
+    edBlit: createProgram(gl, S.VS_QUAD, S.FS_ED_BLIT, 'ed-blit'),
     hex: createProgram(gl, S.VS_HEX, S.FS_HEX, 'hex'),
     post: createProgram(gl, S.VS_QUAD, S.FS_POST, 'post'),
   };
@@ -195,6 +201,68 @@ function geometry() {
            outW: Math.round(state.cols * cellW), outH: Math.round(rows * cellH) };
 }
 
+// palet dither aktif; palet bertingkat diurutkan gelap -> terang
+function ditherPalette() {
+  const ramp = LUMA_RAMP_PALETTES.has(state.palette);
+  let pal = PALETTES[state.palette] || PALETTES.mono;
+  if (ramp) pal = [...pal].sort((a, b) => lumaOf(a) - lumaOf(b));
+  return { pal, ramp };
+}
+
+const srcAspect = () => (srcEl.videoWidth || srcEl.naturalWidth) /
+                        (srcEl.videoHeight || srcEl.naturalHeight);
+
+// Floyd–Steinberg. Error diffusion harus berurutan, jadi bagian itu di CPU (js/dither.js);
+// GPU menyiapkan input kecil dan menggambar hasilnya. Satu titik = state.ditherCell px.
+function renderFloydSteinberg(g) {
+  const cell = state.ditherCell;
+  const w = Math.max(1, Math.ceil(g.outW / cell));
+  const h = Math.max(1, Math.ceil(g.outH / cell));
+  if (!edFBO || edFBO.w !== w || edFBO.h !== h) {
+    freeFBO(edFBO);
+    edFBO = makeFBO(gl, w, h);
+    if (edTex) gl.deleteTexture(edTex);
+    edTex = makeTexture(gl, w, h, gl.NEAREST);
+    edSrc = new Uint8Array(w * h * 4);
+    edDst = new Uint8Array(w * h * 4);
+  }
+
+  // (a) sumber -> grid w×h: cover-fit + levels/contrast/brightness/invert (pass grid).
+  // Area cover-fit = w×h kotak penuh, jadi kotak terakhir di kanan/bawah ikut terpotong.
+  gl.bindFramebuffer(gl.FRAMEBUFFER, edFBO.fbo);
+  gl.viewport(0, 0, w, h);
+  gl.disable(gl.BLEND);
+  const pg = prog.grid;
+  gl.useProgram(pg.program);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, srcTex);
+  gl.uniform1i(pg.u.uSrc, 0);
+  setAdjustUniforms(pg);
+  gl.uniform1f(pg.u.uSourceAspect, srcAspect());
+  gl.uniform2f(pg.u.uOutAspect, w * cell, h * cell);
+  gl.bindVertexArray(quadVAO);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  // (b) baca ke CPU (baris 0 = atas gambar, lihat FS_GRID) lalu error diffusion
+  gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, edSrc);
+  const { pal, ramp } = ditherPalette();
+  const t0 = performance.now();
+  floydSteinberg(edSrc, w, h, pal, ramp, edDst);
+  edStats = { w, h, ms: performance.now() - t0 };
+
+  // (c) hasil -> tekstur -> scene sebagai kotak tajam
+  gl.bindTexture(gl.TEXTURE_2D, edTex);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, edDst);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFBO.fbo);
+  gl.viewport(0, 0, g.outW, g.outH);
+  const pb = prog.edBlit;
+  gl.useProgram(pb.program);
+  gl.uniform1i(pb.u.uTex, 0);
+  gl.uniform1f(pb.u.uCellPx, cell);
+  gl.uniform1f(pb.u.uOutH, g.outH);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
 // uniform fungsi adjust() di shaders.js (dipakai pass grid & dither)
 function setAdjustUniforms(p) {
   gl.uniform2f(p.u.uRange, levelRange[0], levelRange[1]);
@@ -249,7 +317,9 @@ function render() {
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  if (state.mode === 'dither') {
+  if (state.mode === 'dither' && state.ditherAlgo === ALGO_FLOYD) {
+    renderFloydSteinberg(g);
+  } else if (state.mode === 'dither') {
     gl.disable(gl.BLEND);
     const pd = prog.dither;
     gl.useProgram(pd.program);
@@ -265,9 +335,7 @@ function render() {
     gl.uniform1f(pd.u.uSourceAspect, (srcEl.videoWidth || srcEl.naturalWidth) /
                                      (srcEl.videoHeight || srcEl.naturalHeight));
     gl.uniform2f(pd.u.uOutAspect, g.outW, g.outH);
-    const ramp = LUMA_RAMP_PALETTES.has(state.palette);
-    let pal = PALETTES[state.palette] || PALETTES.mono;
-    if (ramp) pal = [...pal].sort((a, b) => lumaOf(a) - lumaOf(b));   // gelap -> terang
+    const { pal, ramp } = ditherPalette();
     const flat = new Float32Array(48);
     pal.forEach((c, i) => {
       flat[i * 3] = c[0] / 255; flat[i * 3 + 1] = c[1] / 255; flat[i * 3 + 2] = c[2] / 255;
@@ -967,6 +1035,7 @@ window.__ASCIIT = {
   get sceneFBO() { return sceneFBO; }, get srcTex() { return srcTex; },
   get srcEl() { return srcEl; },
   get levelRange() { return levelRange; },
+  get ed() { return { ...edStats, src: edSrc, dst: edDst }; },
   get frameDur() { return frameDur; }, get recording() { return recording; },
   get videoFormats() { return videoFormats.map((f) => f.id); },
   asciiText,

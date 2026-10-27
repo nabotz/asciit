@@ -217,6 +217,21 @@ void main() {
   }
 }`;
 
+// ---- pass Floyd–Steinberg: hasil error diffusion (dihitung di CPU, lihat js/dither.js)
+// digambar sebagai kotak tajam selebar uCellPx. Tekstur baris 0 = atas gambar, jadi
+// koordinat diukur dari kiri atas; kotak terakhir di kanan/bawah boleh terpotong.
+export const FS_ED_BLIT = `#version 300 es
+precision highp float;
+uniform sampler2D uTex;
+uniform float uCellPx;
+uniform float uOutH;     // tinggi output (px)
+out vec4 o;
+void main() {
+  vec2 p = vec2(gl_FragCoord.x, uOutH - gl_FragCoord.y);
+  ivec2 t = min(ivec2(floor(p / uCellPx)), textureSize(uTex, 0) - 1);
+  o = vec4(texelFetch(uTex, t, 0).rgb, 1.0);
+}`;
+
 // ---- pass 3D hex (instanced polygon: 1 heksagon atas + 2 muka samping)
 export const VS_HEX = `#version 300 es
 precision highp float;

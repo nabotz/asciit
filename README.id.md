@@ -61,7 +61,7 @@
 <td width="33%" valign="top">
 <img src="docs/icon-gpu.svg" width="44" alt=""><br>
 <b>Satu draw call</b><br>
-<sub>Seluruh grid digambar sekali secara instanced. Tanpa readback CPU per frame.</sub>
+<sub>Seluruh grid karakter digambar sekali secara instanced, tanpa readback CPU per frame.</sub>
 </td>
 <td width="33%" valign="top">
 <img src="docs/icon-zero.svg" width="44" alt=""><br>
@@ -98,7 +98,7 @@
 <td width="50%" valign="top">
 <img src="docs/mode-dither.png" alt="Mode Dither"><br>
 <kbd>3</kbd> &nbsp;<b>Dither</b><br>
-<sub>bayer8, halftone, atau lines, dengan 6 palet: mono, grey4, gameboy, pico8, cga, cyberpunk.</sub>
+<sub>bayer8, halftone, lines, atau Floyd–Steinberg, dengan 6 palet: mono, grey4, gameboy, pico8, cga, cyberpunk.</sub>
 </td>
 <td width="50%" valign="top">
 <img src="docs/mode-hex.png" alt="Mode 3D Hex"><br>
@@ -226,7 +226,8 @@ sumber (gambar / video)
    ├─ pass 2  glyph     : cols×rows instanced quad, slot atlas dipilih di vertex shader
    │                       · characters : indeks ramp dari luma
    │                       · braille    : 8 texel (2×4) → bitmask Unicode U+2800
-   │                       · dither     : fullscreen bayer8/halftone + palet
+   │                       · dither     : fullscreen bayer8/halftone/lines + palet
+   │                                      (Floyd–Steinberg: grid kecil → error diffusion di CPU → kotak)
    │                       · hex        : geometri prisma heksagon (instanced)
    └─ pass 3  post FX   : chromatic · scanline · vignette · grain
 ```
@@ -234,7 +235,7 @@ sumber (gambar / video)
 - **1 draw call** untuk seluruh grid karakter (`drawArraysInstanced`).
 - Atlas glyph dibuat sekali per charset dan ukuran font, disimpan sebagai tekstur.
 - Frame video di-upload sebagai tekstur (`texImage2D`). Tidak ada `getImageData` per frame, jadi tidak ada readback CPU yang lambat.
-- Satu-satunya readback: 64×64 piksel untuk auto-levels (min/max luma per frame).
+- Readback hanya ada dua: 64×64 piksel untuk auto-levels (min/max luma per frame) dan, khusus Floyd–Steinberg, grid dither kecil (ukuran output ÷ ukuran titik).
 
 Bebannya ringan untuk GPU sungguhan: demo bawaan (110 kolom) cuma 110×38 = 4.180 instance per
 frame, dan 300 kolom pada sumber 16:9 (±31.000 instance) masih nyaman. Di software renderer tanpa
@@ -253,6 +254,7 @@ index.html          UI + kontrol (tanpa framework)
 js/shaders.js       semua GLSL: grid, glyph, dither, hex, post
 js/gl.js            helper WebGL2: program, FBO, atlas glyph, geometri hex
 js/main.js          state, render loop, sumber (image/video), ekspor
+js/dither.js        error diffusion Floyd–Steinberg (CPU)
 js/i18n.js          teks UI dua bahasa (Indonesia / English)
 assets/demo.jpg     gambar contoh
 assets/demo.mp4     klip contoh 4 detik
@@ -281,7 +283,8 @@ run.bat             server statis untuk Windows (klik dua kali)
 
 <br>
 
-- **Belum ada dither Floyd–Steinberg** (error diffusion). Versi GPU ini hanya punya algoritma *ordered* (bayer/halftone/lines); error diffusion butuh propagasi berurutan, praktisnya di CPU atau shader multi-pass.
+- **Floyd–Steinberg berjalan di CPU.** Error diffusion harus berurutan, jadi tidak bisa jalan di fragment shader WebGL2. GPU menyiapkan grid kecil (ukuran output ÷ ukuran titik), JavaScript menyebar error-nya, lalu GPU menggambar hasilnya sebagai kotak.
+- **Floyd–Steinberg bergetar di video.** Perubahan kecil di satu piksel ikut menggeser error ke piksel-piksel sesudahnya, jadi polanya berubah antar frame walaupun gambarnya diam. Di video contoh, 10–25% titik yang inputnya tidak berubah tetap berganti tiap frame; bayer, halftone, dan lines tidak begitu. Pakai salah satunya untuk video.
 - **Efek shader:** baru 4 post FX umum (chromatic, scanline, vignette, grain).
 - **Font** diambil dari sistem (`Courier New`, lalu monospace apa saja), jadi bentuk glyph bisa beda tipis antar browser.
 - **Ekspor video direkam real-time**, bukan di-encode per frame: hanya frame yang sempat dirender yang masuk ke file, jadi GPU lambat menurunkan fps hasilnya, dan tab harus tetap di depan. File WebM dari `MediaRecorder` tidak menyimpan durasi di header (sebagian player tidak bisa seek), jadi pilih MP4 kalau tersedia.
@@ -299,7 +302,7 @@ run.bat             server statis untuk Windows (klik dua kali)
 - [x] Player video dengan langkah per frame
 - [x] Ekspor PNG, TXT, dan video MP4/WebM
 - [x] UI Indonesia / English
-- [ ] Dither Floyd–Steinberg (error diffusion)
+- [x] Dither Floyd–Steinberg (error diffusion)
 - [ ] Efek shader tambahan (halftone, glitch, thermal)
 - [ ] Ekspor video per frame dengan WebCodecs (tanpa frame yang hilang)
 - [ ] Ekspor teks berwarna (HTML / ANSI)
