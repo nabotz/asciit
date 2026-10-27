@@ -47,7 +47,11 @@ button {
 }
 button:hover { background: #24242b; }
 button.primary { background: var(--accent); color: #06120b; border-color: transparent; font-weight: 600; }
-main { position: relative; display: grid; place-items: center; overflow: hidden; padding: 16px;
+/* track minmax(0,1fr) bikin area grid punya tinggi pasti, jadi max-height: 100% di canvas
+   ikut berlaku (dengan track auto, canvas cuma mengecil menurut lebar dan kepotong di bawah).
+   padding bawah menyisakan tempat untuk HUD supaya teks status tidak menimpa canvas. */
+main { position: relative; display: grid; place-items: center; overflow: hidden;
+       grid-template: minmax(0, 1fr) / minmax(0, 1fr); padding: 16px 16px 40px;
        min-width: 0; min-height: 0; }
 /* overlay sorot saat file di-drag (lapisan terpisah, tidak menghalangi klik) */
 #drop {
@@ -72,7 +76,7 @@ button:disabled, select:disabled, input:disabled { opacity: .45; cursor: not-all
 progress { width: 100%; height: 6px; accent-color: var(--accent); }
 
 /* ---- player video ---- */
-main.has-player { padding-bottom: 84px; }
+main.has-player { padding-bottom: 100px; }
 main.has-player #hud { bottom: 72px; }
 #player {
   position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
@@ -101,7 +105,7 @@ main.has-player #hud { bottom: 72px; }
   aside { flex-direction: row; flex-wrap: wrap; max-height: 45vh; }
   #player { flex-wrap: wrap; }
   #player .time { min-width: 0; }
-  main.has-player { padding-bottom: 120px; }
+  main.has-player { padding-bottom: 136px; }
   main.has-player #hud { bottom: 110px; }
 }
 </style>
